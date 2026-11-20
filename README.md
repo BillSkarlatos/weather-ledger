@@ -134,16 +134,7 @@ Laravel unchanged.
   unconfirmed until a run with rain right around midnight, the only case where the two readings
   differ.
 
-## 4. Next steps
-
-- Store observed weather to score each provider's accuracy by lead time.
-- API: pagination, an OpenAPI spec, rate limiting, hashed per-client tokens, and agronomic
-  endpoints (frost risk, spray windows).
-- Scale: partition `forecast_values` (or use TimescaleDB), archive old payloads, batch locations
-  per Open-Meteo request, and run schedulers in parallel.
-- A fetch time per location, more variables (wind, humidity, ET₀), and metrics and alerting.
-
-## 5. Additional notes
+## 4. Additional notes
 
 - **Licensing:** the free Open-Meteo API is non-commercial only (under 10,000 calls a day) and
   requires CC BY 4.0 attribution. The WeatherAPI Free plan allows commercial use (100,000 calls a
