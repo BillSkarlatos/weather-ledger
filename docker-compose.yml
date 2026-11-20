@@ -1,0 +1,72 @@
+# Least privilege: setup = owner, scheduler = append-only role, api = read-only role.
+x-app: &app
+  build: .
+  image: weather-ledger
+  init: true
+  restart: unless-stopped
+  depends_on: { setup: { condition: service_completed_successfully } }
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-weather}
+      POSTGRES_USER: ${DB_OWNER_USER:-weather_owner}
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}
+      interval: 5s
+      retries: 20
+
+  setup:
+    <<: *app
+    restart: "no"
+    command: php bin/console setup
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      DB_NAME: ${DB_NAME:-weather}
+      DB_USER: ${DB_OWNER_USER:-weather_owner}
+      DB_PASSWORD: ${DB_OWNER_PASSWORD}
+      DB_INGEST_PASSWORD: ${DB_INGEST_PASSWORD:?}
+      DB_READER_PASSWORD: ${DB_READER_PASSWORD:?}
+      DEFAULT_LOCATION_NAME: ${DEFAULT_LOCATION_NAME:-}
+      DEFAULT_LOCATION_LATITUDE: ${DEFAULT_LOCATION_LATITUDE:-}
+      DEFAULT_LOCATION_LONGITUDE: ${DEFAULT_LOCATION_LONGITUDE:-}
+      DEFAULT_LOCATION_TIMEZONE: ${DEFAULT_LOCATION_TIMEZONE:-}
+
+  scheduler:
+    <<: *app
+    command: php bin/console scheduler
+    environment:
+      DB_NAME: ${DB_NAME:-weather}
+      DB_USER: weather_ingest
+      DB_PASSWORD: ${DB_INGEST_PASSWORD}
+      WEATHERAPI_KEY: ${WEATHERAPI_KEY:?}
+      WEATHERAPI_MAX_DAYS: ${WEATHERAPI_MAX_DAYS:-3}
+      OPENMETEO_BASE_URL: ${OPENMETEO_BASE_URL:-https://api.open-meteo.com}
+      OPENMETEO_API_KEY: ${OPENMETEO_API_KEY:-}
+      FORECAST_DAYS: ${FORECAST_DAYS:-3}
+      SCHEDULE_TIME: ${SCHEDULE_TIME:-06:00}
+      SCHEDULE_TIMEZONE: ${SCHEDULE_TIMEZONE:-UTC}
+      RETRY_MINUTES: ${RETRY_MINUTES:-30}
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(time() - (int) @filemtime('/tmp/scheduler.heartbeat') < 180 ? 0 : 1);"]
+      interval: 60s
+      start_period: 90s
+
+  api:
+    <<: *app
+    ports: ["${API_PORT:-8080}:8080"]
+    environment:
+      DB_NAME: ${DB_NAME:-weather}
+      DB_USER: weather_reader
+      DB_PASSWORD: ${DB_READER_PASSWORD}
+      API_TOKENS: ${API_TOKENS:?}
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://localhost:8080/health') ? 0 : 1);"]
+      interval: 30s
+
+volumes:
+  pgdata:

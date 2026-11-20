@@ -1,0 +1,22 @@
+#!/bin/sh
+# Blocks commits that would publish secrets. Enable once per clone:
+#   git config core.hooksPath .githooks
+
+for file in $(git diff --cached --name-only --diff-filter=ACMR); do
+    case "$file" in
+        .env.example) ;;
+        .env | .env.* | */.env | secrets/* | *.pem | *.key)
+            echo "Blocked: '$file' holds secrets and must not be committed." >&2
+            exit 1 ;;
+    esac
+done
+
+# Any secret value from the local .env appearing in the staged changes (e.g. pasted into code or docs).
+[ -f .env ] || exit 0
+staged=$(git diff --cached -U0)
+for secret in $(grep -E '^(DB_[A-Z_]*PASSWORD|[A-Z_]*_KEY|API_TOKENS)=.' .env | cut -d= -f2- | tr ',' ' '); do
+    if [ ${#secret} -ge 6 ] && printf '%s' "$staged" | grep -qF -- "$secret"; then
+        echo "Blocked: a secret value from .env appears in the staged changes." >&2
+        exit 1
+    fi
+done

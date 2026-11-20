@@ -1,0 +1,6 @@
+.env
+.env.*
+secrets/
+.git
+.githooks
+*.zip
