@@ -13,14 +13,14 @@ To run without Docker: PHP 8.3 (`pdo_pgsql`, `curl`, `mbstring`) and PostgreSQL 
 cp .env.example .env      # set the DB_*_PASSWORD values, WEATHERAPI_KEY and API_TOKENS (openssl rand -hex 32)
 git config core.hooksPath .githooks   # once per clone: blocks commits containing secrets
 docker compose up -d --build
-curl -H "Authorization: Bearer <token>" "http://localhost:8080/api/v1/compare?location_id=1&variable=temperature_2m_min"
+curl -H "Authorization: Bearer <token>" "http://localhost:8081/api/v1/compare?location_id=1&variable=temperature_2m_min"
 ```
 
 What starts:
 - `db` runs PostgreSQL.
 - `setup` creates the database roles, applies the migrations and adds the first location, then exits.
 - `scheduler` fetches daily at `SCHEDULE_TIME`, catching up immediately if it starts later.
-- `api` serves on port 8080.
+- `api` serves on port 8081.
 
 ```bash
 docker compose exec scheduler php bin/console fetch [--date=YYYY-MM-DD] [--force]   # fetch now
@@ -30,7 +30,7 @@ docker compose run --rm -e TEST_INTEGRATION=1 setup php tests/run.php           
 
 **Without Docker:** export the variables below, plus `DB_HOST`, `DB_USER` and `DB_PASSWORD`. Then
 run `php bin/console setup`, `php bin/console scheduler`, and
-`php -S 127.0.0.1:8080 -t public public/index.php`.
+`php -S 127.0.0.1:8081 -t public public/index.php`.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -43,7 +43,7 @@ run `php bin/console setup`, `php bin/console scheduler`, and
 | `SCHEDULE_TIME`, `SCHEDULE_TIMEZONE`, `RETRY_MINUTES` | `06:00`, `UTC`, `30` | Daily run time and retry interval |
 | `DEFAULT_LOCATION_NAME`, `_LATITUDE`, `_LONGITUDE`, `_TIMEZONE` | demo | First location |
 | `API_TOKENS` | **required** | Comma-separated bearer tokens |
-| `API_PORT` | `8080` | Host port |
+| `API_PORT` | `8081` | Host port |
 
 Any variable can instead be read from a file through `NAME_FILE`, which works with Docker secrets.
 
